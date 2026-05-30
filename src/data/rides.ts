@@ -1,0 +1,48 @@
+import { Ride } from '../context/AppContext';
+
+export const rides: Ride[] = [
+  {
+    id: 1,
+    vehicleType: 'Electric',
+    eta: '3 mins',
+    price: 7.50,
+    co2Saved: 1.4,
+    driverName: 'Emeka Obi',
+    driverRating: 4.9,
+    carModel: 'Tesla Model 3',
+    licensePlate: 'EKY-123-GH',
+  },
+  {
+    id: 2,
+    vehicleType: 'Hybrid',
+    eta: '4 mins',
+    price: 6.80,
+    co2Saved: 0.8,
+    driverName: 'Fatima Bello',
+    driverRating: 4.8,
+    carModel: 'Toyota Prius',
+    licensePlate: 'HYB-456-EK',
+  },
+  {
+    id: 3,
+    vehicleType: 'Electric',
+    eta: '6 mins',
+    price: 8.20,
+    co2Saved: 1.6,
+    driverName: 'Chidi Eze',
+    driverRating: 4.7,
+    carModel: 'BYD Atto 3',
+    licensePlate: 'EV-789-LA',
+  },
+  {
+    id: 4,
+    vehicleType: 'Hybrid',
+    eta: '5 mins',
+    price: 5.90,
+    co2Saved: 0.7,
+    driverName: 'Amaka Nwosu',
+    driverRating: 4.6,
+    carModel: 'Honda CR-V Hybrid',
+    licensePlate: 'HY-321-AB',
+  },
+];
