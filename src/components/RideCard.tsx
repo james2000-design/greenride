@@ -1,31 +1,40 @@
-import React, { useRef } from 'react';
+import React, { useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Animated,
-} from 'react-native';
-import { Ride } from '../context/AppContext';
-import { Typography, Spacing, Radius } from '../theme';
+} from "react-native";
+import { Ride } from "../context/AppContext";
+import { Typography, Spacing, Radius } from "../theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 interface Props {
   ride: Ride;
   onSelect: (ride: Ride) => void;
   colors: any;
+  isSelected?: boolean;
 }
 
 const RideCard = React.memo(({ ride, onSelect, colors }: Props) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
-    Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, speed: 50 }).start();
+    Animated.spring(scaleAnim, {
+      toValue: 0.97,
+      useNativeDriver: true,
+      speed: 50,
+    }).start();
   };
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50 }).start();
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 50,
+    }).start();
   };
 
-  const isElectric = ride.vehicleType === 'Electric';
+  const isElectric = ride.vehicleType === "Electric";
   const badgeColor = isElectric ? colors.electricBadge : colors.hybridBadge;
   const badgeBg = isElectric
     ? `${colors.electricBadge}18`
@@ -40,15 +49,18 @@ const RideCard = React.memo(({ ride, onSelect, colors }: Props) => {
       onPressOut={handlePressOut}
       onPress={() => onSelect(ride)}
       accessibilityLabel={`${ride.vehicleType} ride with ${ride.carModel}, ${ride.eta}, ₦${ride.price.toFixed(2)}`}
-      accessibilityRole="button">
+      accessibilityRole="button"
+    >
       <Animated.View
-        style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
+        style={[styles.card, { transform: [{ scale: scaleAnim }] }]}
+      >
         <View style={styles.headerRow}>
           <View
             style={[
               styles.badge,
               { backgroundColor: badgeBg, borderColor: badgeColor },
-            ]}>
+            ]}
+          >
             <Text style={[styles.badgeText, { color: badgeColor }]}>
               {isElectric ? (
                 <MaterialCommunityIcons
@@ -67,7 +79,10 @@ const RideCard = React.memo(({ ride, onSelect, colors }: Props) => {
             </Text>
           </View>
           <View style={styles.etaChip}>
-            <Text style={styles.etaDot}>{" \u00B7 "} <MaterialCommunityIcons name='clock-outline' size={14} /></Text>
+            <Text style={styles.etaDot}>
+              {" \u00B7 "}{" "}
+              <MaterialCommunityIcons name="clock-outline" size={14} />
+            </Text>
             <Text style={styles.etaText}>{ride.eta}</Text>
           </View>
         </View>
@@ -151,9 +166,9 @@ const createStyles = (colors: any) =>
       elevation: 3,
     },
     headerRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
       marginBottom: Spacing.md,
     },
     badge: {
@@ -167,12 +182,12 @@ const createStyles = (colors: any) =>
       fontSize: 11,
     },
     etaChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: 4,
     },
     etaDot: {
-      color: '#4CAF73',
+      color: "#4CAF73",
       fontSize: 8,
     },
     etaText: {
@@ -180,8 +195,8 @@ const createStyles = (colors: any) =>
       color: colors.textSecondary,
     },
     mainRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       marginBottom: Spacing.md,
     },
     carIcon: {
@@ -189,8 +204,8 @@ const createStyles = (colors: any) =>
       height: 56,
       borderRadius: Radius.md,
       backgroundColor: colors.surfaceAlt,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       marginRight: Spacing.md,
     },
     carEmoji: {
@@ -209,12 +224,12 @@ const createStyles = (colors: any) =>
       marginTop: 2,
     },
     ratingRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       marginTop: 4,
     },
     starIcon: {
-      color: '#F0A500',
+      color: "#F0A500",
       fontSize: 13,
     },
     ratingText: {
@@ -227,9 +242,9 @@ const createStyles = (colors: any) =>
       color: colors.textMuted,
     },
     footerRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
       marginBottom: Spacing.sm,
     },
     co2Pill: {
@@ -251,14 +266,14 @@ const createStyles = (colors: any) =>
       backgroundColor: colors.primary,
       borderRadius: Radius.md,
       paddingVertical: 12,
-      alignItems: 'center',
+      alignItems: "center",
       marginTop: Spacing.xs,
     },
     selectBtnText: {
       ...Typography.subheading,
-      color: '#FFFFFF',
-      alignItems: 'center',
-      flexDirection: 'row',
+      color: "#FFFFFF",
+      alignItems: "center",
+      flexDirection: "row",
     },
   });
 

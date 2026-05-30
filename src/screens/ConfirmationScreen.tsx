@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,19 +7,27 @@ import {
   ScrollView,
   Animated,
   StatusBar,
-  SafeAreaView,
   Alert,
-} from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useApp } from '../context/AppContext';
-import { Typography, Spacing, Radius } from '../theme';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useApp } from "../context/AppContext";
+import { Typography, Spacing, Radius } from "../theme";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
 export default function ConfirmationScreen({ navigation }: Props) {
-  const { colors, selectedRide, pendingBooking, confirmBooking, clearSelectedRide, theme } = useApp();
+  const {
+    colors,
+    selectedRide,
+    pendingBooking,
+    confirmBooking,
+    clearSelectedRide,
+    theme,
+  } = useApp();
 
   const slideAnim = useRef(new Animated.Value(60)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -27,10 +35,24 @@ export default function ConfirmationScreen({ navigation }: Props) {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, speed: 12, bounciness: 6 }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        speed: 12,
+        bounciness: 6,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
     ]).start();
-    Animated.timing(co2Anim, { toValue: 1, duration: 1200, useNativeDriver: false, delay: 300 }).start();
+    Animated.timing(co2Anim, {
+      toValue: 1,
+      duration: 1200,
+      useNativeDriver: false,
+      delay: 300,
+    }).start();
   }, []);
 
   if (!selectedRide || !pendingBooking) {
@@ -39,24 +61,24 @@ export default function ConfirmationScreen({ navigation }: Props) {
   }
 
   const ecoPoints = Math.round(selectedRide.co2Saved * 100);
-  const isElectric = selectedRide.vehicleType === 'Electric';
+  const isElectric = selectedRide.vehicleType === "Electric";
 
   const handleConfirm = () => {
     confirmBooking();
     Alert.alert(
-      '🌿 Ride Booked!',
+      "🌿 Ride Booked!",
       `Your ${selectedRide.vehicleType} ride is confirmed.\n+${ecoPoints} EcoPoints earned!`,
       [
         {
-          text: 'View Profile',
-          onPress: () => navigation.navigate('Main', { screen: 'Profile' }),
+          text: "View Profile",
+          onPress: () => navigation.navigate("Main", { screen: "Profile" }),
         },
         {
-          text: 'Back Home',
-          onPress: () => navigation.navigate('Main', { screen: 'Home' }),
-          style: 'cancel',
+          text: "Back Home",
+          onPress: () => navigation.navigate("Main", { screen: "Home" }),
+          style: "cancel",
         },
-      ]
+      ],
     );
   };
 
@@ -70,10 +92,14 @@ export default function ConfirmationScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar
-        barStyle={theme === 'dark' ? 'light-content' : 'dark-content'}
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
         backgroundColor={colors.background}
+        translucent={false}
       />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Back button */}
         <TouchableOpacity
           style={styles.backBtn}
@@ -81,14 +107,40 @@ export default function ConfirmationScreen({ navigation }: Props) {
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <Text style={styles.backBtnText}>← Back</Text>
+          <Text style={styles.backBtnText}>
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={16}
+              color={colors.text}
+            />{" "}
+            Back
+          </Text>
         </TouchableOpacity>
 
-        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+        <Animated.View
+          style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
+        >
           {/* Hero card */}
           <View style={styles.heroCard}>
             <View style={styles.heroEmoji}>
-              <Text style={{ fontSize: 52 }}>{isElectric ? '⚡🚗' : '🔋🚙'}</Text>
+              <Text style={{ fontSize: 52 }}>
+                {isElectric ? (
+                  <>
+                    {" "}
+                    <MaterialCommunityIcons
+                      name="car-electric"
+                      size={52}
+                      color={colors.accent}
+                    />
+                  </>
+                ) : (
+                  <MaterialCommunityIcons
+                    name="car-sports"
+                    size={52}
+                    color={colors.hybridBadge}
+                  />
+                )}
+              </Text>
             </View>
             <Text style={styles.heroTitle}>Ride Summary</Text>
             <Text style={styles.heroSubtitle}>Review your booking details</Text>
@@ -103,7 +155,9 @@ export default function ConfirmationScreen({ navigation }: Props) {
             </View>
             <View style={styles.routeLine} />
             <View style={styles.routeRow}>
-              <View style={[styles.routeDot, { backgroundColor: colors.accentAlt }]} />
+              <View
+                style={[styles.routeDot, { backgroundColor: colors.accentAlt }]}
+              />
               <Text style={styles.routeText}>{pendingBooking.to}</Text>
             </View>
           </View>
@@ -113,12 +167,78 @@ export default function ConfirmationScreen({ navigation }: Props) {
             <Text style={styles.cardLabel}>VEHICLE & DRIVER</Text>
             <View style={styles.detailGrid}>
               {[
-                { label: 'Type', value: selectedRide.vehicleType, icon: isElectric ? '⚡' : '🔋' },
-                { label: 'ETA', value: selectedRide.eta, icon: '🕐' },
-                { label: 'Model', value: selectedRide.carModel, icon: '🚗' },
-                { label: 'Driver', value: selectedRide.driverName, icon: '👤' },
-                { label: 'Rating', value: `★ ${selectedRide.driverRating}`, icon: '' },
-                { label: 'Plate', value: selectedRide.licensePlate, icon: '🪪' },
+                {
+                  label: "Type",
+                  value: selectedRide.vehicleType,
+                  icon: isElectric ? (
+                    <MaterialCommunityIcons
+                      name="lightning-bolt"
+                      size={16}
+                      color={colors.accentAlt}
+                    />
+                  ) : (
+                    <MaterialCommunityIcons
+                      name="battery"
+                      size={16}
+                      color={colors.hybridBadge}
+                    />
+                  ),
+                },
+                {
+                  label: "ETA",
+                  value: selectedRide.eta,
+                  icon: (
+                    <MaterialCommunityIcons
+                      name="clock-time-four"
+                      size={16}
+                      color={colors.accent}
+                    />
+                  ),
+                },
+                {
+                  label: "Model",
+                  value: selectedRide.carModel,
+                  icon: (
+                    <MaterialCommunityIcons
+                      name="car"
+                      size={16}
+                      color={colors.electricBadge}
+                    />
+                  ),
+                },
+                {
+                  label: "Driver",
+                  value: selectedRide.driverName,
+                  icon: (
+                    <MaterialCommunityIcons
+                      name="account"
+                      size={16}
+                      color={colors.hybridBadge}
+                    />
+                  ),
+                },
+                {
+                  label: "Rating",
+                  value: `${selectedRide.driverRating}`,
+                  icon: (
+                    <MaterialCommunityIcons
+                      name="star"
+                      size={16}
+                      color={colors.accentAlt}
+                    />
+                  ),
+                },
+                {
+                  label: "Plate",
+                  value: selectedRide.licensePlate,
+                  icon: (
+                    <MaterialCommunityIcons
+                      name="card-account-details"
+                      size={16}
+                      color={colors.textSecondary}
+                    />
+                  ),
+                },
               ].map((item) => (
                 <View key={item.label} style={styles.detailItem}>
                   <Text style={styles.detailLabel}>{item.label}</Text>
@@ -132,10 +252,19 @@ export default function ConfirmationScreen({ navigation }: Props) {
 
           {/* CO2 savings highlight */}
           <View style={styles.co2Card}>
-            <Text style={styles.co2CardLabel}>🌿 ENVIRONMENTAL IMPACT</Text>
+            <Text style={styles.co2CardLabel}>
+              <MaterialCommunityIcons
+                name="leaf"
+                size={16}
+                color={colors.accentAlt}
+              />{" "}
+              ENVIRONMENTAL IMPACT
+            </Text>
             <View style={styles.co2Row}>
               <View style={styles.co2Stat}>
-                <Text style={styles.co2BigValue}>{selectedRide.co2Saved}kg</Text>
+                <Text style={styles.co2BigValue}>
+                  {selectedRide.co2Saved}kg
+                </Text>
                 <Text style={styles.co2StatLabel}>CO₂ Saved</Text>
               </View>
               <View style={styles.co2Divider} />
@@ -151,25 +280,37 @@ export default function ConfirmationScreen({ navigation }: Props) {
                   {
                     width: co2Anim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: ['0%', `${Math.min(selectedRide.co2Saved * 50, 100)}%`],
+                      outputRange: [
+                        "0%",
+                        `${Math.min(selectedRide.co2Saved * 50, 100)}%`,
+                      ],
                     }),
                   },
                 ]}
               />
             </View>
             <Text style={styles.co2Equivalent}>
-              Equivalent to planting {Math.round(selectedRide.co2Saved * 2)} trees 🌳
+              Equivalent to planting {Math.round(selectedRide.co2Saved * 2)}{" "}
+              trees{" "}
+              <MaterialCommunityIcons
+                name="tree"
+                size={18}
+                color={colors.accent}
+              />
             </Text>
           </View>
 
           {/* Price card */}
           <View style={styles.priceCard}>
             <Text style={styles.priceLabel}>TOTAL FARE</Text>
-            <Text style={styles.priceValue}>₦{selectedRide.price.toFixed(2)}</Text>
-            <Text style={styles.priceNote}>Cash or card accepted on arrival</Text>
+            <Text style={styles.priceValue}>
+              ₦{selectedRide.price.toFixed(2)}
+            </Text>
+            <Text style={styles.priceNote}>
+              Cash or card accepted on arrival
+            </Text>
           </View>
 
-          {/* Actions */}
           <TouchableOpacity
             style={styles.confirmBtn}
             onPress={handleConfirm}
@@ -212,7 +353,7 @@ const createStyles = (colors: any) =>
       color: colors.primary,
     },
     heroCard: {
-      alignItems: 'center',
+      alignItems: "center",
       paddingVertical: Spacing.lg,
       marginBottom: Spacing.md,
     },
@@ -242,8 +383,8 @@ const createStyles = (colors: any) =>
       marginBottom: Spacing.md,
     },
     routeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: Spacing.sm,
       paddingVertical: 4,
     },
@@ -266,12 +407,12 @@ const createStyles = (colors: any) =>
       flex: 1,
     },
     detailGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
+      flexDirection: "row",
+      flexWrap: "wrap",
       gap: Spacing.sm,
     },
     detailItem: {
-      width: '47%',
+      width: "47%",
       backgroundColor: colors.surfaceAlt,
       borderRadius: Radius.md,
       padding: Spacing.sm,
@@ -284,7 +425,7 @@ const createStyles = (colors: any) =>
     detailValue: {
       ...Typography.body,
       color: colors.text,
-      fontWeight: '600',
+      fontWeight: "600",
     },
     co2Card: {
       backgroundColor: colors.primaryLight,
@@ -292,7 +433,7 @@ const createStyles = (colors: any) =>
       padding: Spacing.md,
       marginBottom: Spacing.md,
       borderWidth: 1,
-      borderColor: colors.primary + '44',
+      borderColor: colors.primary + "44",
     },
     co2CardLabel: {
       ...Typography.label,
@@ -300,13 +441,13 @@ const createStyles = (colors: any) =>
       marginBottom: Spacing.md,
     },
     co2Row: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       marginBottom: Spacing.md,
     },
     co2Stat: {
       flex: 1,
-      alignItems: 'center',
+      alignItems: "center",
     },
     co2BigValue: {
       ...Typography.displayMedium,
@@ -326,18 +467,20 @@ const createStyles = (colors: any) =>
       height: 6,
       backgroundColor: colors.border,
       borderRadius: Radius.full,
-      overflow: 'hidden',
+      overflow: "hidden",
       marginBottom: Spacing.sm,
     },
     co2Bar: {
-      height: '100%',
+      height: "100%",
       backgroundColor: colors.primary,
       borderRadius: Radius.full,
     },
     co2Equivalent: {
       ...Typography.caption,
       color: colors.textSecondary,
-      textAlign: 'center',
+      textAlign: "center",
+      flexDirection: "row",
+      alignItems: "center",
     },
     priceCard: {
       backgroundColor: colors.surface,
@@ -346,7 +489,7 @@ const createStyles = (colors: any) =>
       marginBottom: Spacing.lg,
       borderWidth: 1,
       borderColor: colors.border,
-      alignItems: 'center',
+      alignItems: "center",
     },
     priceLabel: {
       ...Typography.label,
@@ -367,7 +510,7 @@ const createStyles = (colors: any) =>
       backgroundColor: colors.primary,
       borderRadius: Radius.lg,
       paddingVertical: 18,
-      alignItems: 'center',
+      alignItems: "center",
       marginBottom: Spacing.md,
       shadowColor: colors.primary,
       shadowOffset: { width: 0, height: 6 },
@@ -377,13 +520,13 @@ const createStyles = (colors: any) =>
     },
     confirmBtnText: {
       ...Typography.subheading,
-      color: '#FFFFFF',
+      color: "#FFFFFF",
       fontSize: 17,
     },
     cancelBtn: {
       borderRadius: Radius.lg,
       paddingVertical: 14,
-      alignItems: 'center',
+      alignItems: "center",
       borderWidth: 1,
       borderColor: colors.border,
     },

@@ -7,8 +7,8 @@ import {
   Animated,
   TouchableOpacity,
   StatusBar,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
 import { Typography, Spacing, Radius } from '../theme';
 
