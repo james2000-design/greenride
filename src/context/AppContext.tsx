@@ -7,12 +7,7 @@ import React, {
   useRef,
   ReactNode,
 } from "react";
-import { useColorScheme, Animated, LayoutAnimation, Platform, UIManager, Easing } from "react-native";
-
-// Enable LayoutAnimation for Android
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+import { useColorScheme, Animated, Easing } from "react-native";
 import { Colors } from "../theme";
 import { rides as ridesData } from "../data/rides";
 
@@ -66,9 +61,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<"light" | "dark">(
     systemScheme === "dark" ? "dark" : "light",
   );
+  const [prevTheme, setPrevTheme] = useState<"light" | "dark">(
+    systemScheme === "dark" ? "dark" : "light",
+  );
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [prevTheme, setPrevTheme] = useState<"light" | "dark">(theme);
-
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(false);
   const [bookedRides, setBookedRides] = useState<BookedRide[]>([]);
@@ -78,7 +74,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     to: string;
   } | null>(null);
 
-  // 0 = new theme fully visible, 1 = old theme overlay fully visible
   const themeTransitionAnim = useRef(new Animated.Value(0)).current;
 
   const runTransition = useCallback(() => {
@@ -96,10 +91,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   // Sync with system theme
   useEffect(() => {
-    if (systemScheme && systemScheme !== theme) {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (
+      systemScheme &&
+      systemScheme !== "unspecified" &&
+      systemScheme !== theme
+    ) {
+      const next = systemScheme === "dark" ? "dark" : "light";
       setPrevTheme(theme);
-      setTheme(systemScheme);
+      setTheme(next);
       runTransition();
     }
   }, [systemScheme]);
@@ -111,12 +110,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const toggleTheme = useCallback(() => {
     const newTheme = theme === "light" ? "dark" : "light";
-    LayoutAnimation.configureNext({
-      duration: 600,
-      create: { type: "easeInEaseOut", property: "opacity" },
-      update: { type: "easeInEaseOut" },
-      delete: { type: "easeInEaseOut", property: "opacity" },
-    });
     setPrevTheme(theme);
     setTheme(newTheme);
     runTransition();
