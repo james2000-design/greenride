@@ -408,11 +408,25 @@ export default function ProfileScreen() {
               >
                 <View style={styles.rideHistoryLeft}>
                   <Text style={styles.rideHistoryType}>
-                    {ride.vehicleType === "Electric" ? "⚡" : "🔋"}{" "}
+                    {ride.vehicleType === "Electric" ? (
+                      <MaterialCommunityIcons
+                        name="lightning-bolt"
+                        size={18}
+                        color={colors.accentAlt}
+                      />
+                    ) : (
+                      <MaterialCommunityIcons
+                        name="battery-charging"
+                        size={18}
+                        color={colors.accent}
+                      />
+                    )}{" "}
                     {ride.vehicleType}
                   </Text>
                   <Text style={styles.rideHistoryRoute}>
-                    {ride.from} → {ride.to}
+                    {ride.from}{" "}
+                    <MaterialCommunityIcons name="arrow-right-top-bold" />
+                    {ride.to}
                   </Text>
                   <Text style={styles.rideHistoryDate}>
                     {new Date(ride.bookedAt).toLocaleDateString("en-NG", {
