@@ -1,12 +1,9 @@
-// src/screens/HomeScreen.tsx
-
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
@@ -19,8 +16,11 @@ import RideCard from "../components/RideCard";
 import MapViewComponent, { Destination } from "../components/MapViewComponent";
 import { Typography, Spacing, Radius } from "../theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
+import Constants from "expo-constants";
 
-// Driver positions keyed by ride id — must match MapViewComponent's MOCK_DRIVER_LOCATIONS
+const apiKey = Constants.expoConfig?.extra?.googleMapsApiKey ?? "";
+
 const DRIVER_POSITIONS: Record<
   number,
   { latitude: number; longitude: number }
@@ -53,8 +53,11 @@ export default function HomeScreen({ navigation }: Props) {
   const [selectedRideId, setSelectedRideId] = useState<number | null>(null);
   const [activeDestination, setActiveDestination] =
     useState<Destination | null>(null);
+
   const spinAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
   const handleThemeToggle = useCallback(() => {
     spinAnim.setValue(0);
     Animated.parallel([
@@ -84,13 +87,11 @@ export default function HomeScreen({ navigation }: Props) {
     inputRange: [0, 1],
     outputRange: ["0deg", "360deg"],
   });
-  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     fetchRides();
   }, []);
 
-  // Handle destination selected inside MapViewComponent — sync "to" input
   const handleDestinationChange = useCallback((dest: Destination | null) => {
     setActiveDestination(dest);
     setTo(dest?.label ?? "");
@@ -127,9 +128,10 @@ export default function HomeScreen({ navigation }: Props) {
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View>
-            {/*  Header  */}
+            {/* Header */}
             <View style={styles.header}>
               <View>
                 <Text
@@ -143,7 +145,7 @@ export default function HomeScreen({ navigation }: Props) {
                   />
                 </Text>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>
-                  Where to?
+                  Where to, John?
                 </Text>
               </View>
               <TouchableOpacity
@@ -181,7 +183,7 @@ export default function HomeScreen({ navigation }: Props) {
               </TouchableOpacity>
             </View>
 
-            {/*  Location inputs */}
+            {/* Location inputs */}
             <View
               style={[
                 styles.inputCard,
@@ -191,66 +193,131 @@ export default function HomeScreen({ navigation }: Props) {
                 },
               ]}
             >
+              {/* From row — stays as plain TextInput */}
               <View style={styles.inputRow}>
                 <View
                   style={[styles.inputDot, { backgroundColor: colors.primary }]}
                 />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  value={from}
-                  onChangeText={setFrom}
+                <GooglePlacesAutocomplete
                   placeholder="From"
-                  placeholderTextColor={colors.textMuted}
-                  accessibilityLabel="Pickup location"
+                  onPress={(data) => {
+                    setFrom(
+                      data.structured_formatting?.main_text ?? data.description,
+                    );
+                  }}
+                  query={{
+                    key: apiKey,
+                    language: "en",
+                    components: "country:ng",
+                  }}
+                  fetchDetails
+                  textInputProps={{
+                    value: from,
+                    onChangeText: setFrom,
+                    placeholderTextColor: colors.textMuted,
+                    accessibilityLabel: "Pickup location",
+                  }}
+                  styles={{
+                    textInput: [styles.input, { color: colors.text }],
+                    container: styles.autocompleteContainer,
+                    listView: [
+                      styles.autocompleteList,
+                      { backgroundColor: colors.surface },
+                    ],
+                    row: { backgroundColor: colors.surface },
+                    description: { color: colors.text },
+                    separator: { backgroundColor: colors.border },
+                    poweredContainer: { display: "none" },
+                  }}
                 />
               </View>
+
               <View
                 style={[
                   styles.inputDivider,
                   { backgroundColor: colors.border },
                 ]}
               />
+
+              {/* To row — Google Places autocomplete */}
               <View style={styles.inputRow}>
                 <View
                   style={[styles.inputDot, { backgroundColor: "#E53935" }]}
                 />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  value={to}
-                  onChangeText={setTo}
-                  placeholder="To — tap a destination below"
-                  placeholderTextColor={colors.textMuted}
-                  accessibilityLabel="Drop-off location"
+                <GooglePlacesAutocomplete
+                  placeholder=" Search any location in Nigeria"
+                  onPress={(data, details = null) => {
+                    const lat = details?.geometry?.location?.lat;
+                    const lng = details?.geometry?.location?.lng;
+                    if (lat && lng) {
+                      const dest: Destination = {
+                        id: data.place_id,
+                        label:
+                          data.structured_formatting?.main_text ??
+                          data.description,
+                        coordinate: { latitude: lat, longitude: lng },
+                      };
+                      handleDestinationChange(dest);
+                    }
+                  }}
+                  query={{
+                    key: apiKey,
+                    language: "en",
+                    components: "country:ng",
+                  }}
+                  fetchDetails
+                  textInputProps={{
+                    value: to,
+                    onChangeText: setTo,
+                    placeholderTextColor: colors.textMuted,
+                    accessibilityLabel: "Drop-off location",
+                  }}
+                  renderRightButton={() =>
+                    to.length > 0 ? (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setTo("");
+                          handleDestinationChange(null);
+                        }}
+                        accessibilityLabel="Clear destination"
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.clearBtn}
+                      >
+                        <MaterialCommunityIcons
+                          name="close-circle"
+                          size={18}
+                          color={colors.textMuted}
+                        />
+                      </TouchableOpacity>
+                    ) : null
+                  }
+                  styles={{
+                    textInput: [styles.input, { color: colors.text }],
+                    container: styles.autocompleteContainer,
+                    listView: [
+                      styles.autocompleteList,
+                      { backgroundColor: colors.surface },
+                    ],
+                    row: { backgroundColor: colors.surface },
+                    description: { color: colors.text },
+                    separator: { backgroundColor: colors.border },
+                    poweredContainer: { display: "none" },
+                  }}
                 />
-                {to.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setTo("");
-                      setActiveDestination(null);
-                    }}
-                    accessibilityLabel="Clear destination"
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <MaterialCommunityIcons
-                      name="close-circle"
-                      size={18}
-                      color={colors.textMuted}
-                    />
-                  </TouchableOpacity>
-                )}
               </View>
             </View>
 
-            {/*  Map component  */}
+            {/* Map component */}
             <MapViewComponent
               mode="embedded"
               onDestinationChange={handleDestinationChange}
               selectedDriverPosition={selectedDriverPosition}
               pulseAnim={pulseAnim}
               from={from}
+              activeDestination={activeDestination}
             />
 
-            {/*  Eco banner */}
+            {/* Eco banner */}
             <View
               style={[
                 styles.ecoBanner,
@@ -268,7 +335,7 @@ export default function HomeScreen({ navigation }: Props) {
               </Text>
             </View>
 
-            {/* ── Filter tabs  */}
+            {/* Filter tabs */}
             <View style={styles.filterRow}>
               {(["All", "Electric", "Hybrid"] as const).map((type) => (
                 <TouchableOpacity
@@ -370,8 +437,13 @@ const createStyles = (colors: any) =>
       paddingTop: Spacing.lg,
       paddingBottom: Spacing.md,
     },
-    greeting: { ...Typography.body, marginBottom: Spacing.xs },
-    headerTitle: { ...Typography.displayMedium },
+    greeting: {
+      ...Typography.body,
+      marginBottom: Spacing.xs,
+      fontSize: 18,
+      fontWeight: "700",
+    },
+    headerTitle: { ...Typography.subheading },
     themeToggle: {
       width: 44,
       height: 44,
@@ -392,20 +464,49 @@ const createStyles = (colors: any) =>
       shadowOpacity: 0.06,
       shadowRadius: 8,
       elevation: 2,
+      zIndex: 10,
     },
     inputRow: {
       flexDirection: "row",
       alignItems: "center",
       paddingVertical: Spacing.xs,
+      zIndex: 10,
     },
     inputDot: {
       width: 10,
       height: 10,
       borderRadius: Radius.full,
       marginRight: Spacing.sm,
+      flexShrink: 0,
     },
-    input: { flex: 1, ...Typography.body, paddingVertical: 6 },
+    input: {
+      ...Typography.body,
+      paddingVertical: 6,
+      backgroundColor: "transparent",
+      height: 40,
+    },
     inputDivider: { height: 1, marginLeft: 18, marginVertical: 4 },
+    autocompleteContainer: {
+      flex: 1,
+      zIndex: 10,
+    },
+    autocompleteList: {
+      position: "absolute",
+      top: 44,
+      left: 0,
+      right: 0,
+      zIndex: 99,
+      borderRadius: Radius.md,
+      elevation: 5,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+    },
+    clearBtn: {
+      justifyContent: "center",
+      paddingHorizontal: 4,
+    },
 
     ecoBanner: {
       flexDirection: "row",

@@ -1,6 +1,3 @@
-// src/components/MapViewComponent.tsx
-// Reusable map component used in both HomeScreen (embedded) and MapScreen (full-screen)
-
 import React, { useRef, useState, useCallback } from "react";
 import {
   View,
@@ -12,7 +9,7 @@ import {
 } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { useApp } from "../context/AppContext";
-import { Typography, Spacing, Radius } from "../theme";
+import { Spacing, Radius } from "../theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const USER_LOCATION = { latitude: 6.4541, longitude: 3.3947 };
@@ -66,6 +63,7 @@ interface Props {
   selectedDriverPosition?: { latitude: number; longitude: number } | null;
   pulseAnim?: Animated.Value;
   from?: string;
+  activeDestination?: Destination | null;
 }
 
 export default function MapViewComponent({
@@ -74,17 +72,23 @@ export default function MapViewComponent({
   selectedDriverPosition,
   pulseAnim: externalPulse,
   from = "Your Location",
+  activeDestination: externalActiveDestination,
 }: Props) {
   const { colors, theme } = useApp();
   const mapRef = useRef<MapView>(null);
   const [mapType, setMapType] = useState<"standard" | "satellite">("standard");
-  const [activeDestination, setActiveDestination] =
+  const [internalActiveDestination, setInternalActiveDestination] =
     useState<Destination | null>(null);
   const [activeDriver, setActiveDriver] = useState<
     (typeof MOCK_DRIVER_LOCATIONS)[0] | null
   >(null);
 
-  // Internal pulse animation (used in embedded mode or when no external one is passed)
+  // Use external destination if provided (from GooglePlaces), otherwise use internal (chip taps)
+  const activeDestination =
+    externalActiveDestination !== undefined
+      ? externalActiveDestination
+      : internalActiveDestination;
+
   const internalPulse = useRef(new Animated.Value(1)).current;
   const pulseAnim = externalPulse ?? internalPulse;
 
@@ -105,10 +109,27 @@ export default function MapViewComponent({
     ).start();
   }, []);
 
+  // Pan map when external destination changes (from GooglePlaces)
+  React.useEffect(() => {
+    if (externalActiveDestination) {
+      setTimeout(() => {
+        mapRef.current?.fitToCoordinates(
+          [USER_LOCATION, externalActiveDestination.coordinate],
+          {
+            edgePadding: { top: 60, bottom: 60, left: 60, right: 60 },
+            animated: true,
+          },
+        );
+      }, 100);
+    } else if (externalActiveDestination === null) {
+      mapRef.current?.animateToRegion(INITIAL_REGION, 500);
+    }
+  }, [externalActiveDestination]);
+
   const handleDestinationSelect = useCallback(
     (dest: Destination) => {
       const next = activeDestination?.id === dest.id ? null : dest;
-      setActiveDestination(next);
+      setInternalActiveDestination(next);
       setActiveDriver(null);
       onDestinationChange?.(next);
 
@@ -161,14 +182,12 @@ export default function MapViewComponent({
     }
   };
 
-  // Driver shown on map — prefer the one passed from HomeScreen (after booking tap)
   const activeDriverCoord =
     selectedDriverPosition ??
     (activeDriver
       ? { latitude: activeDriver.latitude, longitude: activeDriver.longitude }
       : null);
 
-  // Build route: user  driver (if any)  destination (if any)
   const routeCoords = [
     USER_LOCATION,
     ...(activeDriverCoord ? [activeDriverCoord] : []),
@@ -179,7 +198,7 @@ export default function MapViewComponent({
 
   return (
     <View style={[styles.wrapper, isFullscreen && styles.wrapperFullscreen]}>
-      {/*  Destination chips  */}
+      {/* Destination chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -227,7 +246,6 @@ export default function MapViewComponent({
       <View style={styles.mapLabelRow}>
         {activeDestination ? (
           <View style={styles.routeLabel}>
-            {/* From */}
             <View style={styles.routeLabelSide}>
               <MaterialCommunityIcons
                 name="map-marker"
@@ -241,8 +259,6 @@ export default function MapViewComponent({
                 {from}
               </Text>
             </View>
-
-            {/* Arrow — absolutely centered */}
             <View style={styles.routeArrow}>
               <MaterialCommunityIcons
                 name="arrow-right-bold-outline"
@@ -250,8 +266,6 @@ export default function MapViewComponent({
                 color={colors.textMuted}
               />
             </View>
-
-            {/* To */}
             <View
               style={[styles.routeLabelSide, { justifyContent: "flex-end" }]}
             >
@@ -270,11 +284,10 @@ export default function MapViewComponent({
           </View>
         ) : (
           <Text style={[styles.mapLabel, { color: colors.textMuted }]}>
-            Tap a destination above
+            Search or tap a destination above
           </Text>
         )}
 
-        {/* Satellite toggle — fullscreen only */}
         {isFullscreen && (
           <TouchableOpacity
             style={[
@@ -301,7 +314,7 @@ export default function MapViewComponent({
         )}
       </View>
 
-      {/*  Map */}
+      {/* Map */}
       <View
         style={[
           styles.mapWrapper,
@@ -320,7 +333,7 @@ export default function MapViewComponent({
           showsCompass={false}
           accessibilityLabel="Map showing your location and nearby eco-friendly rides"
         >
-          {/* User location — pulsing dot */}
+          {/* User location */}
           <Marker
             coordinate={USER_LOCATION}
             anchor={{ x: 0.5, y: 0.5 }}
@@ -405,14 +418,14 @@ export default function MapViewComponent({
             />
           )}
 
-          {/* Nearby drivers (unselected) */}
+          {/* Nearby drivers */}
           {MOCK_DRIVER_LOCATIONS.map((driver) => {
             const isActive = activeDriver?.id === driver.id;
             const isBookedDriver =
               selectedDriverPosition &&
               driver.latitude === selectedDriverPosition.latitude &&
               driver.longitude === selectedDriverPosition.longitude;
-            if (isBookedDriver) return null; // already shown as the selected driver above
+            if (isBookedDriver) return null;
             return (
               <Marker
                 key={driver.id}
@@ -421,7 +434,6 @@ export default function MapViewComponent({
                   longitude: driver.longitude,
                 }}
                 title={`${driver.type} Ride`}
-                description={`${driver.type === "Electric" ? <MaterialCommunityIcons name="lightning-bolt" size={12} color={colors.electricBadge ?? "#1565C0"} /> : <MaterialCommunityIcons name="leaf" size={12} color={colors.hybridBadge ?? "#2E7D32"} />} Tap to preview route`}
                 anchor={{ x: 0.5, y: 0.5 }}
                 onPress={() => isFullscreen && handleDriverSelect(driver)}
                 accessibilityLabel={`${driver.type} driver nearby`}
@@ -470,7 +482,7 @@ export default function MapViewComponent({
             color={colors.primary}
           />
         </TouchableOpacity>
-        {/* Legend overlay */}
+        {/* Legend */}
         <View
           style={[styles.mapLegend, { backgroundColor: colors.surface + "EE" }]}
         >
@@ -496,7 +508,7 @@ export default function MapViewComponent({
             <MaterialCommunityIcons
               name="battery-charging"
               size={11}
-              color={colors.electricBadge}
+              color={colors.hybridBadge ?? "#2E7D32"}
             />
             <Text style={[styles.legendText, { color: colors.textSecondary }]}>
               Hybrid
@@ -515,21 +527,6 @@ export default function MapViewComponent({
             </View>
           )}
         </View>
-        {/* Tap hint — fullscreen only */}
-        {isFullscreen && !activeDriver && (
-          <View
-            style={[styles.tapHint, { backgroundColor: colors.surface + "EE" }]}
-          >
-            <MaterialCommunityIcons
-              name="gesture-tap"
-              size={13}
-              color={colors.textMuted}
-            />
-            <Text style={[styles.tapHintText, { color: colors.textMuted }]}>
-              Tap a driver to preview route
-            </Text>
-          </View>
-        )}
       </View>
 
       {/* Destination-required hint — embedded only */}
@@ -546,7 +543,7 @@ export default function MapViewComponent({
             color={colors.primary}
           />
           <Text style={[styles.mapHintText, { color: colors.primary }]}>
-            Select a destination above to enable booking
+            Search or select a destination above to enable booking
           </Text>
         </View>
       )}
@@ -560,7 +557,7 @@ const styles = StyleSheet.create({
 
   chipRow: {
     paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.xl,
+    paddingBottom: Spacing.sm,
     gap: Spacing.xs,
     flexDirection: "row",
   },
