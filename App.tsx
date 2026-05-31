@@ -1,11 +1,12 @@
 import React from "react";
+import { Animated, StyleSheet, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-import { AppProvider } from "./src/context/AppContext";
+import { AppProvider, useApp } from "./src/context/AppContext";
 import SplashScreen from "./src/screens/SplashScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import ConfirmationScreen from "./src/screens/ConfirmationScreen";
@@ -15,29 +16,31 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
+  const { colors } = useApp();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ color, size }) => {
-          let iconName: React.ComponentProps<
-            typeof MaterialCommunityIcons
-          >["name"] = "car";
+        tabBarIcon: ({ color, size, focused }) => {
+          const icons: Record<string, "car" | "map" | "account"> = {
+            Home: "car",
+            Map: "map",
+            Profile: "account",
+          };
 
-          if (route.name === "Home") {
-            iconName = "car";
-          } else if (route.name === "Map") {
-            iconName = "map";
-          } else if (route.name === "Profile") {
-            iconName = "account";
-          }
+          const iconName = icons[route.name] ?? "car";
 
           return (
             <MaterialCommunityIcons name={iconName} size={size} color={color} />
           );
         },
-        tabBarActiveTintColor: "#2f95dc",
-        tabBarInactiveTintColor: "gray",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+        },
       })}
     >
       <Tab.Screen
@@ -68,14 +71,39 @@ function RootNavigator() {
   );
 }
 
-export default function App() {
+function ThemedRoot() {
+  const { colors, themeTransitionAnim } = useApp();
+
   return (
-    <AppProvider>
-      <SafeAreaProvider>
+    <SafeAreaProvider>
+      <View style={styles.root}>
         <NavigationContainer>
           <RootNavigator />
         </NavigationContainer>
-      </SafeAreaProvider>
+
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: colors.background,
+              opacity: themeTransitionAnim,
+            },
+          ]}
+        />
+      </View>
+    </SafeAreaProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <ThemedRoot />
     </AppProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});

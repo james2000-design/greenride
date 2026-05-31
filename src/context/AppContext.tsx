@@ -6,15 +6,14 @@ import React, {
   useEffect,
   useRef,
   ReactNode,
-} from 'react';
-import { useColorScheme } from 'react-native';
-import { Colors } from '../theme';
-import { rides as ridesData } from '../data/rides';
-
+} from "react";
+import { useColorScheme, Animated } from "react-native";
+import { Colors } from "../theme";
+import { rides as ridesData } from "../data/rides";
 
 export interface Ride {
   id: number;
-  vehicleType: 'Electric' | 'Hybrid';
+  vehicleType: "Electric" | "Hybrid";
   eta: string;
   price: number;
   co2Saved: number;
@@ -32,7 +31,7 @@ export interface BookedRide extends Ride {
 }
 
 export interface AppState {
-  theme: 'light' | 'dark';
+  theme: "light" | "dark";
   rides: Ride[];
   loading: boolean;
   bookedRides: BookedRide[];
@@ -44,30 +43,55 @@ export interface AppState {
 
 interface AppContextValue extends AppState {
   toggleTheme: () => void;
-  colors: typeof Colors[keyof typeof Colors];
+  colors: (typeof Colors)[keyof typeof Colors];
   fetchRides: () => void;
   selectRide: (ride: Ride) => void;
   setPendingBooking: (booking: { from: string; to: string } | null) => void;
   confirmBooking: () => void;
   clearSelectedRide: () => void;
+  themeTransitionAnim: Animated.Value;
 }
-
 
 const AppContext = createContext<AppContextValue | null>(null);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const systemScheme = useColorScheme();
-  const [theme, setTheme] = useState<'light' | 'dark'>(systemScheme === 'dark' ? 'dark' : 'light');
+  const [theme, setTheme] = useState<"light" | "dark">(
+    systemScheme === "dark" ? "dark" : "light",
+  );
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(false);
   const [bookedRides, setBookedRides] = useState<BookedRide[]>([]);
   const [selectedRide, setSelectedRide] = useState<Ride | null>(null);
-  const [pendingBooking, setPendingBookingState] = useState<{ from: string; to: string } | null>(null);
+  const [pendingBooking, setPendingBookingState] = useState<{
+    from: string;
+    to: string;
+  } | null>(null);
+
+  // 0 = fully settled (no flash), pulses to 1 and back on each toggle
+  const themeTransitionAnim = useRef(new Animated.Value(0)).current;
+
+  const runTransition = useCallback(() => {
+    themeTransitionAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(themeTransitionAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(themeTransitionAnim, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [themeTransitionAnim]);
 
   // Sync with system theme
   useEffect(() => {
     if (systemScheme) {
-      setTheme(systemScheme === 'dark' ? 'dark' : 'light');
+      runTransition();
+      setTheme(systemScheme === "dark" ? "dark" : "light");
     }
   }, [systemScheme]);
 
@@ -77,12 +101,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const colors = Colors[theme];
 
   const toggleTheme = useCallback(() => {
-    setTheme((t) => (t === 'light' ? 'dark' : 'light'));
-  }, []);
+    runTransition();
+    // Delay the actual theme swap to the peak of the fade-in (180 ms)
+    // so the flash covers the color change
+    setTimeout(() => {
+      setTheme((t) => (t === "light" ? "dark" : "light"));
+    }, 180);
+  }, [runTransition]);
 
   const fetchRides = useCallback(() => {
     setLoading(true);
-    // Simulate mock API call
     setTimeout(() => {
       setRides(ridesData);
       setLoading(false);
@@ -93,9 +121,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setSelectedRide(ride);
   }, []);
 
-  const setPendingBooking = useCallback((booking: { from: string; to: string } | null) => {
-    setPendingBookingState(booking);
-  }, []);
+  const setPendingBooking = useCallback(
+    (booking: { from: string; to: string } | null) => {
+      setPendingBookingState(booking);
+    },
+    [],
+  );
 
   const confirmBooking = useCallback(() => {
     if (!selectedRide || !pendingBooking) return;
@@ -134,6 +165,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setPendingBooking,
         confirmBooking,
         clearSelectedRide,
+        themeTransitionAnim,
       }}
     >
       {children}
@@ -143,6 +175,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
 export const useApp = (): AppContextValue => {
   const ctx = useContext(AppContext);
-  if (!ctx) throw new Error('useApp must be used within AppProvider');
+  if (!ctx) throw new Error("useApp must be used within AppProvider");
   return ctx;
 };

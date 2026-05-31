@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -7,13 +7,13 @@ import {
   ScrollView,
   Animated,
   StatusBar,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useApp } from "../context/AppContext";
+import { useApp, Ride } from "../context/AppContext";
 import { Typography, Spacing, Radius } from "../theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import RideSuccessModal from "../components/RideSuccessModal";
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -28,6 +28,16 @@ export default function ConfirmationScreen({ navigation }: Props) {
     clearSelectedRide,
     theme,
   } = useApp();
+
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  // Snapshot ride + booking into local state so they survive context being cleared
+  const [frozenRide, setFrozenRide] = useState<Ride | null>(selectedRide);
+  const [frozenBooking, setFrozenBooking] = useState<{
+    from: string;
+    to: string;
+  } | null>(pendingBooking);
 
   const slideAnim = useRef(new Animated.Value(60)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -55,31 +65,29 @@ export default function ConfirmationScreen({ navigation }: Props) {
     }).start();
   }, []);
 
-  if (!selectedRide || !pendingBooking) {
-    navigation.goBack();
+  // Guard: only go back if we didn't intentionally confirm
+  useEffect(() => {
+    if (!confirming && !selectedRide && !pendingBooking) {
+      navigation.goBack();
+    }
+  }, [selectedRide, pendingBooking, navigation, confirming]);
+
+  if (!frozenRide || !frozenBooking) {
     return null;
   }
 
-  const ecoPoints = Math.round(selectedRide.co2Saved * 100);
-  const isElectric = selectedRide.vehicleType === "Electric";
+  const ecoPoints = Math.round(frozenRide.co2Saved * 100);
+  const isElectric = frozenRide.vehicleType === "Electric";
 
   const handleConfirm = () => {
+    // Freeze local copies before context is wiped
+    setFrozenRide(selectedRide);
+    setFrozenBooking(pendingBooking);
+    setConfirming(true);
     confirmBooking();
-    Alert.alert(
-      "🌿 Ride Booked!",
-      `Your ${selectedRide.vehicleType} ride is confirmed.\n+${ecoPoints} EcoPoints earned!`,
-      [
-        {
-          text: "View Profile",
-          onPress: () => navigation.navigate("Main", { screen: "Profile" }),
-        },
-        {
-          text: "Back Home",
-          onPress: () => navigation.navigate("Main", { screen: "Home" }),
-          style: "cancel",
-        },
-      ],
-    );
+    setTimeout(() => {
+      setShowSuccess(true);
+    }, 150);
   };
 
   const handleCancel = () => {
@@ -100,6 +108,21 @@ export default function ConfirmationScreen({ navigation }: Props) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <RideSuccessModal
+          visible={showSuccess}
+          vehicleType={frozenRide.vehicleType}
+          ecoPoints={ecoPoints}
+          colors={colors}
+          onViewProfile={() => {
+            setShowSuccess(false);
+            navigation.navigate("Main", { screen: "Profile" });
+          }}
+          onGoHome={() => {
+            setShowSuccess(false);
+            navigation.navigate("Main", { screen: "Home" });
+          }}
+        />
+
         {/* Back button */}
         <TouchableOpacity
           style={styles.backBtn}
@@ -123,24 +146,19 @@ export default function ConfirmationScreen({ navigation }: Props) {
           {/* Hero card */}
           <View style={styles.heroCard}>
             <View style={styles.heroEmoji}>
-              <Text style={{ fontSize: 52 }}>
-                {isElectric ? (
-                  <>
-                    {" "}
-                    <MaterialCommunityIcons
-                      name="car-electric"
-                      size={52}
-                      color={colors.accent}
-                    />
-                  </>
-                ) : (
-                  <MaterialCommunityIcons
-                    name="car-sports"
-                    size={52}
-                    color={colors.hybridBadge}
-                  />
-                )}
-              </Text>
+              {isElectric ? (
+                <MaterialCommunityIcons
+                  name="car-electric"
+                  size={52}
+                  color={colors.accent}
+                />
+              ) : (
+                <MaterialCommunityIcons
+                  name="car-sports"
+                  size={52}
+                  color={colors.hybridBadge}
+                />
+              )}
             </View>
             <Text style={styles.heroTitle}>Ride Summary</Text>
             <Text style={styles.heroSubtitle}>Review your booking details</Text>
@@ -151,14 +169,14 @@ export default function ConfirmationScreen({ navigation }: Props) {
             <Text style={styles.cardLabel}>TRIP DETAILS</Text>
             <View style={styles.routeRow}>
               <View style={styles.routeDot} />
-              <Text style={styles.routeText}>{pendingBooking.from}</Text>
+              <Text style={styles.routeText}>{frozenBooking.from}</Text>
             </View>
             <View style={styles.routeLine} />
             <View style={styles.routeRow}>
               <View
                 style={[styles.routeDot, { backgroundColor: colors.accentAlt }]}
               />
-              <Text style={styles.routeText}>{pendingBooking.to}</Text>
+              <Text style={styles.routeText}>{frozenBooking.to}</Text>
             </View>
           </View>
 
@@ -169,7 +187,7 @@ export default function ConfirmationScreen({ navigation }: Props) {
               {[
                 {
                   label: "Type",
-                  value: selectedRide.vehicleType,
+                  value: frozenRide.vehicleType,
                   icon: isElectric ? (
                     <MaterialCommunityIcons
                       name="lightning-bolt"
@@ -186,7 +204,7 @@ export default function ConfirmationScreen({ navigation }: Props) {
                 },
                 {
                   label: "ETA",
-                  value: selectedRide.eta,
+                  value: frozenRide.eta,
                   icon: (
                     <MaterialCommunityIcons
                       name="clock-time-four"
@@ -197,7 +215,7 @@ export default function ConfirmationScreen({ navigation }: Props) {
                 },
                 {
                   label: "Model",
-                  value: selectedRide.carModel,
+                  value: frozenRide.carModel,
                   icon: (
                     <MaterialCommunityIcons
                       name="car"
@@ -208,7 +226,7 @@ export default function ConfirmationScreen({ navigation }: Props) {
                 },
                 {
                   label: "Driver",
-                  value: selectedRide.driverName,
+                  value: frozenRide.driverName,
                   icon: (
                     <MaterialCommunityIcons
                       name="account"
@@ -219,7 +237,7 @@ export default function ConfirmationScreen({ navigation }: Props) {
                 },
                 {
                   label: "Rating",
-                  value: `${selectedRide.driverRating}`,
+                  value: `${frozenRide.driverRating}`,
                   icon: (
                     <MaterialCommunityIcons
                       name="star"
@@ -230,7 +248,7 @@ export default function ConfirmationScreen({ navigation }: Props) {
                 },
                 {
                   label: "Plate",
-                  value: selectedRide.licensePlate,
+                  value: frozenRide.licensePlate,
                   icon: (
                     <MaterialCommunityIcons
                       name="card-account-details"
@@ -256,15 +274,13 @@ export default function ConfirmationScreen({ navigation }: Props) {
               <MaterialCommunityIcons
                 name="leaf"
                 size={16}
-                color={colors.accentAlt}
+                color={colors.accent}
               />{" "}
               ENVIRONMENTAL IMPACT
             </Text>
             <View style={styles.co2Row}>
               <View style={styles.co2Stat}>
-                <Text style={styles.co2BigValue}>
-                  {selectedRide.co2Saved}kg
-                </Text>
+                <Text style={styles.co2BigValue}>{frozenRide.co2Saved}kg</Text>
                 <Text style={styles.co2StatLabel}>CO₂ Saved</Text>
               </View>
               <View style={styles.co2Divider} />
@@ -282,7 +298,7 @@ export default function ConfirmationScreen({ navigation }: Props) {
                       inputRange: [0, 1],
                       outputRange: [
                         "0%",
-                        `${Math.min(selectedRide.co2Saved * 50, 100)}%`,
+                        `${Math.min(frozenRide.co2Saved * 50, 100)}%`,
                       ],
                     }),
                   },
@@ -290,8 +306,7 @@ export default function ConfirmationScreen({ navigation }: Props) {
               />
             </View>
             <Text style={styles.co2Equivalent}>
-              Equivalent to planting {Math.round(selectedRide.co2Saved * 2)}{" "}
-              trees{" "}
+              Equivalent to planting {Math.round(frozenRide.co2Saved * 2)} trees{" "}
               <MaterialCommunityIcons
                 name="tree"
                 size={18}
@@ -304,7 +319,7 @@ export default function ConfirmationScreen({ navigation }: Props) {
           <View style={styles.priceCard}>
             <Text style={styles.priceLabel}>TOTAL FARE</Text>
             <Text style={styles.priceValue}>
-              ₦{selectedRide.price.toFixed(2)}
+              ₦{frozenRide.price.toFixed(2)}
             </Text>
             <Text style={styles.priceNote}>
               Cash or card accepted on arrival
@@ -318,7 +333,14 @@ export default function ConfirmationScreen({ navigation }: Props) {
             accessibilityLabel="Confirm ride booking"
             accessibilityRole="button"
           >
-            <Text style={styles.confirmBtnText}>Confirm Booking 🌿</Text>
+            <Text style={styles.confirmBtnText}>
+              Confirm Booking{" "}
+              <MaterialCommunityIcons
+                name="leaf"
+                size={16}
+                color={colors.surface}
+              />
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -479,8 +501,6 @@ const createStyles = (colors: any) =>
       ...Typography.caption,
       color: colors.textSecondary,
       textAlign: "center",
-      flexDirection: "row",
-      alignItems: "center",
     },
     priceCard: {
       backgroundColor: colors.surface,
