@@ -7,6 +7,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { AppProvider, useApp } from "./src/context/AppContext";
+import { Colors } from "./src/theme";
 import SplashScreen from "./src/screens/SplashScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import ConfirmationScreen from "./src/screens/ConfirmationScreen";
@@ -72,25 +73,47 @@ function RootNavigator() {
 }
 
 function ThemedRoot() {
-  const { colors, themeTransitionAnim } = useApp();
+  const { themeTransitionAnim, isTransitioning, prevTheme, theme } = useApp();
 
   return (
     <SafeAreaProvider>
-      <View style={styles.root}>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
-
+      <View style={[styles.root, { backgroundColor: Colors[theme].background }]}>
         <Animated.View
-          pointerEvents="none"
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: colors.background,
-              opacity: themeTransitionAnim,
-            },
-          ]}
-        />
+          style={{
+            flex: 1,
+            transform: [
+              {
+                scale: themeTransitionAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 0.98],
+                }),
+              },
+              {
+                translateY: themeTransitionAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 8],
+                }),
+              },
+            ],
+          }}
+        >
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+        </Animated.View>
+
+        {isTransitioning && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: Colors[prevTheme].background,
+                opacity: themeTransitionAnim,
+              },
+            ]}
+          />
+        )}
       </View>
     </SafeAreaProvider>
   );

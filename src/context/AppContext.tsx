@@ -7,7 +7,12 @@ import React, {
   useRef,
   ReactNode,
 } from "react";
-import { useColorScheme, Animated } from "react-native";
+import { useColorScheme, Animated, LayoutAnimation, Platform, UIManager, Easing } from "react-native";
+
+// Enable LayoutAnimation for Android
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { Colors } from "../theme";
 import { rides as ridesData } from "../data/rides";
 
@@ -50,6 +55,8 @@ interface AppContextValue extends AppState {
   confirmBooking: () => void;
   clearSelectedRide: () => void;
   themeTransitionAnim: Animated.Value;
+  isTransitioning: boolean;
+  prevTheme: "light" | "dark";
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -59,6 +66,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<"light" | "dark">(
     systemScheme === "dark" ? "dark" : "light",
   );
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [prevTheme, setPrevTheme] = useState<"light" | "dark">(theme);
+
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(false);
   const [bookedRides, setBookedRides] = useState<BookedRide[]>([]);
@@ -68,30 +78,29 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     to: string;
   } | null>(null);
 
-  // 0 = fully settled (no flash), pulses to 1 and back on each toggle
+  // 0 = new theme fully visible, 1 = old theme overlay fully visible
   const themeTransitionAnim = useRef(new Animated.Value(0)).current;
 
   const runTransition = useCallback(() => {
-    themeTransitionAnim.setValue(0);
-    Animated.sequence([
-      Animated.timing(themeTransitionAnim, {
-        toValue: 1,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-      Animated.timing(themeTransitionAnim, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    themeTransitionAnim.setValue(1);
+    setIsTransitioning(true);
+    Animated.timing(themeTransitionAnim, {
+      toValue: 0,
+      duration: 650,
+      easing: Easing.bezier(0.4, 0, 0.2, 1),
+      useNativeDriver: true,
+    }).start(() => {
+      setIsTransitioning(false);
+    });
   }, [themeTransitionAnim]);
 
   // Sync with system theme
   useEffect(() => {
-    if (systemScheme) {
+    if (systemScheme && systemScheme !== theme) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setPrevTheme(theme);
+      setTheme(systemScheme);
       runTransition();
-      setTheme(systemScheme === "dark" ? "dark" : "light");
     }
   }, [systemScheme]);
 
@@ -101,13 +110,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const colors = Colors[theme];
 
   const toggleTheme = useCallback(() => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    LayoutAnimation.configureNext({
+      duration: 600,
+      create: { type: "easeInEaseOut", property: "opacity" },
+      update: { type: "easeInEaseOut" },
+      delete: { type: "easeInEaseOut", property: "opacity" },
+    });
+    setPrevTheme(theme);
+    setTheme(newTheme);
     runTransition();
-    // Delay the actual theme swap to the peak of the fade-in (180 ms)
-    // so the flash covers the color change
-    setTimeout(() => {
-      setTheme((t) => (t === "light" ? "dark" : "light"));
-    }, 180);
-  }, [runTransition]);
+  }, [theme, runTransition]);
 
   const fetchRides = useCallback(() => {
     setLoading(true);
@@ -166,6 +179,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         confirmBooking,
         clearSelectedRide,
         themeTransitionAnim,
+        isTransitioning,
+        prevTheme,
       }}
     >
       {children}
