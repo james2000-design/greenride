@@ -14,6 +14,9 @@ module.exports = {
       config: {
         googleMapsApiKey,
       },
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     android: {
       package: "com.greenride.app",
