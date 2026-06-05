@@ -19,7 +19,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 
 const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
-console.log("Google Maps API Key:", apiKey);
 const DRIVER_POSITIONS: Record<
   number,
   { latitude: number; longitude: number }
