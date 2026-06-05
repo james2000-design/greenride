@@ -6,8 +6,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
+  Platform,
 } from "react-native";
-import MapView, { Polyline, Marker } from "react-native-maps";
+import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { useApp } from "../context/AppContext";
 import { Spacing, Radius } from "../theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -331,6 +332,7 @@ export default function MapViewComponent({
           showsUserLocation={false}
           showsMyLocationButton={false}
           showsCompass={false}
+          provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
           accessibilityLabel="Map showing your location and nearby eco-friendly rides"
         >
           {/* User location */}

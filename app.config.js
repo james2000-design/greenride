@@ -40,7 +40,8 @@ module.exports = {
       [
         "react-native-maps",
         {
-          googleMapsApiKey,
+          androidGoogleMapsApiKey: googleMapsApiKey,
+          iosGoogleMapsApiKey: googleMapsApiKey,
         },
       ],
     ],
