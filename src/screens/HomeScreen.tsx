@@ -19,7 +19,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 import Constants from "expo-constants";
 
-const apiKey = Constants.expoConfig?.extra?.googleMapsApiKey ?? "";
+const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
 const DRIVER_POSITIONS: Record<
   number,
