@@ -17,7 +17,6 @@ import MapViewComponent, { Destination } from "../components/MapViewComponent";
 import { Typography, Spacing, Radius } from "../theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
-import Constants from "expo-constants";
 
 const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
