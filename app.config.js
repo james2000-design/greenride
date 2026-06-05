@@ -20,6 +20,11 @@ module.exports = {
     },
     android: {
       package: "com.greenride.app",
+      config: {
+        googleMaps: {
+          apiKey: googleMapsApiKey,
+        },
+      },
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
         foregroundImage: "./assets/android-icon-foreground.png",
