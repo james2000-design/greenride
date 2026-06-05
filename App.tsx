@@ -76,35 +76,35 @@ function ThemedRoot() {
   const { themeTransitionAnim, isTransitioning, prevTheme, theme } = useApp();
 
   return (
-    <SafeAreaProvider>
-      <View style={[styles.root, { backgroundColor: Colors[theme].background }]}>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
+    <View style={[styles.root, { backgroundColor: Colors[theme].background }]}>
+      <NavigationContainer>
+        <RootNavigator />
+      </NavigationContainer>
 
-        {isTransitioning && (
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: Colors[prevTheme].background,
-                opacity: themeTransitionAnim,
-                zIndex: 99,
-              },
-            ]}
-          />
-        )}
-      </View>
-    </SafeAreaProvider>
+      {isTransitioning && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: Colors[prevTheme].background,
+              opacity: themeTransitionAnim,
+              zIndex: 99,
+            },
+          ]}
+        />
+      )}
+    </View>
   );
 }
 
 export default function App() {
   return (
-    <AppProvider>
-      <ThemedRoot />
-    </AppProvider>
+    <SafeAreaProvider>
+      <AppProvider>
+        <ThemedRoot />
+      </AppProvider>
+    </SafeAreaProvider>
   );
 }
 
