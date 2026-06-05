@@ -18,7 +18,7 @@ import { Typography, Spacing, Radius } from "../theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 
-const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+const apiKey = (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY) || "";
 const DRIVER_POSITIONS: Record<
   number,
   { latitude: number; longitude: number }
@@ -271,7 +271,7 @@ export default function HomeScreen({ navigation }: Props) {
                     accessibilityLabel: "Drop-off location",
                   }}
                   renderRightButton={() =>
-                    to.length > 0 ? (
+                    to && to.length > 0 ? (
                       <TouchableOpacity
                         onPress={() => {
                           setTo("");
@@ -287,7 +287,7 @@ export default function HomeScreen({ navigation }: Props) {
                           color={colors.textMuted}
                         />
                       </TouchableOpacity>
-                    ) : null
+                    ) : undefined
                   }
                   styles={{
                     textInput: [styles.input, { color: colors.text }],

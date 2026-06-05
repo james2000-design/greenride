@@ -7,7 +7,7 @@ import {
   ScrollView,
   Animated,
 } from "react-native";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import MapView, { PROVIDER_GOOGLE, Polyline, Marker } from "react-native-maps";
 import { useApp } from "../context/AppContext";
 import { Spacing, Radius } from "../theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -98,12 +98,12 @@ export default function MapViewComponent({
         Animated.timing(pulseAnim, {
           toValue: 1.4,
           duration: 900,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1.0,
           duration: 900,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]),
     ).start();
@@ -324,6 +324,7 @@ export default function MapViewComponent({
       >
         <MapView
           ref={mapRef}
+          provider={PROVIDER_GOOGLE}
           style={styles.map}
           initialRegion={INITIAL_REGION}
           mapType={mapType}

@@ -78,29 +78,9 @@ function ThemedRoot() {
   return (
     <SafeAreaProvider>
       <View style={[styles.root, { backgroundColor: Colors[theme].background }]}>
-        <Animated.View
-          style={{
-            flex: 1,
-            transform: [
-              {
-                scale: themeTransitionAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [1, 0.98],
-                }),
-              },
-              {
-                translateY: themeTransitionAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 8],
-                }),
-              },
-            ],
-          }}
-        >
-          <NavigationContainer>
-            <RootNavigator />
-          </NavigationContainer>
-        </Animated.View>
+        <NavigationContainer>
+          <RootNavigator />
+        </NavigationContainer>
 
         {isTransitioning && (
           <Animated.View
@@ -110,6 +90,7 @@ function ThemedRoot() {
               {
                 backgroundColor: Colors[prevTheme].background,
                 opacity: themeTransitionAnim,
+                zIndex: 99,
               },
             ]}
           />

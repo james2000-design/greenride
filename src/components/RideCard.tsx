@@ -16,7 +16,7 @@ interface Props {
   isSelected?: boolean;
 }
 
-const RideCard = React.memo(({ ride, onSelect, colors }: Props) => {
+const RideCard = React.memo(({ ride, onSelect, colors, isSelected }: Props) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -52,7 +52,11 @@ const RideCard = React.memo(({ ride, onSelect, colors }: Props) => {
       accessibilityRole="button"
     >
       <Animated.View
-        style={[styles.card, { transform: [{ scale: scaleAnim }] }]}
+        style={[
+          styles.card,
+          { transform: [{ scale: scaleAnim }] },
+          isSelected && { borderColor: colors.primary, borderWidth: 2 },
+        ]}
       >
         <View style={styles.headerRow}>
           <View
