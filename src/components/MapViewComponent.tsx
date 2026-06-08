@@ -13,12 +13,8 @@ import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { useApp } from "../context/AppContext";
 import { Spacing, Radius } from "../theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-const apiKey =
-  Constants.expoConfig?.extra?.googleMapsApiKey ||
-  Constants.manifest?.extra?.googleMapsApiKey ||
-  "";
+const apiKey = Constants.expoConfig?.extra?.googleMapsApiKey || "";
 const USER_LOCATION = { latitude: 6.4541, longitude: 3.3947 };
-
 const INITIAL_REGION = {
   ...USER_LOCATION,
   latitudeDelta: 0.08,
