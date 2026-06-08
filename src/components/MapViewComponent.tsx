@@ -8,11 +8,15 @@ import {
   Animated,
   Platform,
 } from "react-native";
+import Constants from "expo-constants";
 import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { useApp } from "../context/AppContext";
 import { Spacing, Radius } from "../theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-
+const apiKey =
+  Constants.expoConfig?.extra?.googleMapsApiKey ||
+  Constants.manifest?.extra?.googleMapsApiKey ||
+  "";
 const USER_LOCATION = { latitude: 6.4541, longitude: 3.3947 };
 
 const INITIAL_REGION = {
@@ -65,6 +69,7 @@ interface Props {
   pulseAnim?: Animated.Value;
   from?: string;
   activeDestination?: Destination | null;
+  fromCoordinate?: { latitude: number; longitude: number } | null;
 }
 
 export default function MapViewComponent({
@@ -74,6 +79,7 @@ export default function MapViewComponent({
   pulseAnim: externalPulse,
   from = "Your Location",
   activeDestination: externalActiveDestination,
+  fromCoordinate,
 }: Props) {
   const { colors, theme } = useApp();
   const mapRef = useRef<MapView>(null);
@@ -83,7 +89,9 @@ export default function MapViewComponent({
   const [activeDriver, setActiveDriver] = useState<
     (typeof MOCK_DRIVER_LOCATIONS)[0] | null
   >(null);
-
+  const [routePoints, setRoutePoints] = useState<
+    { latitude: number; longitude: number }[]
+  >([]);
   // Use external destination if provided (from GooglePlaces), otherwise use internal (chip taps)
   const activeDestination =
     externalActiveDestination !== undefined
@@ -110,23 +118,73 @@ export default function MapViewComponent({
     ).start();
   }, []);
 
-  // Pan map when external destination changes (from GooglePlaces)
   React.useEffect(() => {
-    if (externalActiveDestination) {
+    const origin = fromCoordinate ?? USER_LOCATION;
+    if (activeDestination) {
       setTimeout(() => {
         mapRef.current?.fitToCoordinates(
-          [USER_LOCATION, externalActiveDestination.coordinate],
+          [origin, activeDestination.coordinate],
           {
             edgePadding: { top: 60, bottom: 60, left: 60, right: 60 },
             animated: true,
           },
         );
       }, 100);
-    } else if (externalActiveDestination === null) {
-      mapRef.current?.animateToRegion(INITIAL_REGION, 500);
+    } else {
+      mapRef.current?.animateToRegion(
+        { ...origin, latitudeDelta: 0.08, longitudeDelta: 0.08 },
+        500,
+      );
     }
-  }, [externalActiveDestination]);
+  }, [externalActiveDestination, fromCoordinate]);
 
+  function decodePolyline(encoded: string) {
+    const points: { latitude: number; longitude: number }[] = [];
+    let index = 0,
+      lat = 0,
+      lng = 0;
+    while (index < encoded.length) {
+      let b,
+        shift = 0,
+        result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      lat += result & 1 ? ~(result >> 1) : result >> 1;
+      shift = result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      lng += result & 1 ? ~(result >> 1) : result >> 1;
+      points.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+    }
+    return points;
+  }
+  React.useEffect(() => {
+    const origin = fromCoordinate ?? USER_LOCATION;
+    if (!activeDestination) {
+      setRoutePoints([]);
+      return;
+    }
+
+    const { latitude: oLat, longitude: oLng } = origin;
+    const { latitude: dLat, longitude: dLng } = activeDestination.coordinate;
+    const url =
+      `https://maps.googleapis.com/maps/api/directions/json` +
+      `?origin=${oLat},${oLng}&destination=${dLat},${dLng}&key=${apiKey}`;
+
+    fetch(url)
+      .then((r) => r.json())
+      .then((data) => {
+        const points = data.routes?.[0]?.overview_polyline?.points;
+        if (points) setRoutePoints(decodePolyline(points));
+      })
+      .catch(console.error);
+  }, [activeDestination, fromCoordinate]);
   const handleDestinationSelect = useCallback(
     (dest: Destination) => {
       const next = activeDestination?.id === dest.id ? null : dest;
@@ -170,14 +228,12 @@ export default function MapViewComponent({
   );
 
   const recenter = () => {
+    const origin = fromCoordinate ?? USER_LOCATION;
     if (activeDestination) {
-      mapRef.current?.fitToCoordinates(
-        [USER_LOCATION, activeDestination.coordinate],
-        {
-          edgePadding: { top: 60, bottom: 60, left: 60, right: 60 },
-          animated: true,
-        },
-      );
+      mapRef.current?.fitToCoordinates([origin, activeDestination.coordinate], {
+        edgePadding: { top: 60, bottom: 60, left: 60, right: 60 },
+        animated: true,
+      });
     } else {
       mapRef.current?.animateToRegion(INITIAL_REGION, 600);
     }
@@ -189,14 +245,15 @@ export default function MapViewComponent({
       ? { latitude: activeDriver.latitude, longitude: activeDriver.longitude }
       : null);
 
+  const originCoord = fromCoordinate ?? USER_LOCATION;
+
   const routeCoords = [
-    USER_LOCATION,
+    originCoord,
     ...(activeDriverCoord ? [activeDriverCoord] : []),
     ...(activeDestination ? [activeDestination.coordinate] : []),
   ];
 
   const isFullscreen = mode === "fullscreen";
-
   return (
     <View style={[styles.wrapper, isFullscreen && styles.wrapperFullscreen]}>
       {/* Destination chips */}
@@ -289,30 +346,28 @@ export default function MapViewComponent({
           </Text>
         )}
 
-        {isFullscreen && (
-          <TouchableOpacity
-            style={[
-              styles.mapTypeBtn,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-            onPress={() =>
-              setMapType((t) => (t === "standard" ? "satellite" : "standard"))
-            }
-            accessibilityLabel="Toggle satellite view"
-            accessibilityRole="button"
+        <TouchableOpacity
+          style={[
+            styles.mapTypeBtn,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+          onPress={() =>
+            setMapType((t) => (t === "standard" ? "satellite" : "standard"))
+          }
+          accessibilityLabel="Toggle satellite view"
+          accessibilityRole="button"
+        >
+          <MaterialCommunityIcons
+            name={mapType === "standard" ? "satellite-uplink" : "map"}
+            size={14}
+            color={colors.textSecondary}
+          />
+          <Text
+            style={[styles.mapTypeBtnText, { color: colors.textSecondary }]}
           >
-            <MaterialCommunityIcons
-              name={mapType === "standard" ? "satellite-uplink" : "map"}
-              size={14}
-              color={colors.textSecondary}
-            />
-            <Text
-              style={[styles.mapTypeBtnText, { color: colors.textSecondary }]}
-            >
-              {mapType === "standard" ? "Sat" : "Map"}
-            </Text>
-          </TouchableOpacity>
-        )}
+            {mapType === "standard" ? "Sat" : "Map"}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Map */}
@@ -328,16 +383,24 @@ export default function MapViewComponent({
           style={styles.map}
           initialRegion={INITIAL_REGION}
           mapType={mapType}
-          customMapStyle={theme === "dark" ? colors.mapStyle : []}
+          customMapStyle={
+            mapType === "standard"
+              ? []
+              : theme === "dark"
+                ? colors.mapStyle
+                : []
+          }
           showsUserLocation={false}
           showsMyLocationButton={false}
           showsCompass={false}
-          provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+          provider={
+            Platform.OS === "android" && !__DEV__ ? PROVIDER_GOOGLE : undefined
+          }
           accessibilityLabel="Map showing your location and nearby eco-friendly rides"
         >
           {/* User location */}
           <Marker
-            coordinate={USER_LOCATION}
+            coordinate={fromCoordinate ?? USER_LOCATION}
             anchor={{ x: 0.5, y: 0.5 }}
             accessibilityLabel="Your location"
           >
@@ -410,13 +473,12 @@ export default function MapViewComponent({
           )}
 
           {/* Route polyline */}
-          {routeCoords.length >= 2 && (
+          {routePoints.length >= 2 && (
             <Polyline
-              coordinates={routeCoords}
+              coordinates={routePoints}
               strokeColor={colors.primary}
-              strokeWidth={3}
+              strokeWidth={6}
               lineDashPattern={[8, 4]}
-              accessibilityLabel="Route from your location to destination"
             />
           )}
 
@@ -585,10 +647,10 @@ const styles = StyleSheet.create({
   mapTypeBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 2,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: Radius.full,
+    borderRadius: Radius.md,
     borderWidth: 1,
   },
   mapTypeBtnText: { fontSize: 11 },

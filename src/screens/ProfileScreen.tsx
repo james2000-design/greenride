@@ -94,9 +94,10 @@ export default function ProfileScreen() {
                 <MaterialCommunityIcons
                   name="medal"
                   size={14}
-                  color={colors.text}
+                  color="#C0C0C0"
                 />
               ),
+              color: "#C0C0C0",
             }
           : {
               name: "Bronze",

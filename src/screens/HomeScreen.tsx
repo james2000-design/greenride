@@ -9,6 +9,7 @@ import {
   StatusBar,
   Animated,
 } from "react-native";
+import Constants from "expo-constants";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useApp, Ride } from "../context/AppContext";
@@ -18,7 +19,10 @@ import { Typography, Spacing, Radius } from "../theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 
-const apiKey = (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY) || "";
+const apiKey =
+  Constants.expoConfig?.extra?.googleMapsApiKey ||
+  Constants.manifest?.extra?.googleMapsApiKey ||
+  "";
 const DRIVER_POSITIONS: Record<
   number,
   { latitude: number; longitude: number }
@@ -51,7 +55,10 @@ export default function HomeScreen({ navigation }: Props) {
   const [selectedRideId, setSelectedRideId] = useState<number | null>(null);
   const [activeDestination, setActiveDestination] =
     useState<Destination | null>(null);
-
+  const [fromCoordinate, setFromCoordinate] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const spinAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -90,10 +97,66 @@ export default function HomeScreen({ navigation }: Props) {
     fetchRides();
   }, []);
 
+  const geocodeAddress = useCallback(async (address: string) => {
+    if (!address.trim()) return null;
+    const encodedAddress = encodeURIComponent(address.trim());
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&components=country:NG&key=${apiKey}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      const location = data?.results?.[0]?.geometry?.location;
+      if (location?.lat != null && location?.lng != null) {
+        return {
+          latitude: location.lat,
+          longitude: location.lng,
+        };
+      }
+    } catch (error) {
+      console.error("Geocode error:", error);
+    }
+
+    return null;
+  }, []);
+
   const handleDestinationChange = useCallback((dest: Destination | null) => {
     setActiveDestination(dest);
     setTo(dest?.label ?? "");
   }, []);
+
+  const handleFromSubmit = useCallback(async () => {
+    const trimmed = from.trim();
+    if (!trimmed) {
+      setFrom("Victoria Island, Lagos");
+      setFromCoordinate(null);
+      return;
+    }
+
+    setFrom(trimmed);
+    const coordinate = await geocodeAddress(trimmed);
+    setFromCoordinate(coordinate);
+  }, [from, geocodeAddress]);
+
+  const handleToSubmit = useCallback(async () => {
+    const trimmed = to.trim();
+    setTo(trimmed);
+
+    if (!trimmed) {
+      setActiveDestination(null);
+      return;
+    }
+
+    const coordinate = await geocodeAddress(trimmed);
+    if (coordinate) {
+      handleDestinationChange({
+        id: trimmed,
+        label: trimmed,
+        coordinate,
+      });
+    } else {
+      setActiveDestination(null);
+    }
+  }, [to, geocodeAddress, handleDestinationChange]);
 
   const handleSelectRide = useCallback(
     (ride: Ride) => {
@@ -192,26 +255,44 @@ export default function HomeScreen({ navigation }: Props) {
               ]}
             >
               {/* From row — stays as plain TextInput */}
-              <View style={styles.inputRow}>
+              <View style={styles.inputRowFrom}>
                 <View
                   style={[styles.inputDot, { backgroundColor: colors.primary }]}
                 />
                 <GooglePlacesAutocomplete
                   placeholder="From"
-                  onPress={(data) => {
+                  onPress={(data, details = null) => {
                     setFrom(
                       data.structured_formatting?.main_text ?? data.description,
                     );
+                    const lat = details?.geometry?.location?.lat;
+                    const lng = details?.geometry?.location?.lng;
+                    if (lat != null && lng != null) {
+                      setFromCoordinate({
+                        latitude: lat,
+                        longitude: lng,
+                      });
+                    }
                   }}
                   query={{
                     key: apiKey,
                     language: "en",
                     components: "country:ng",
                   }}
+                  minLength={2}
+                  debounce={200}
+                  nearbyPlacesAPI="GooglePlacesSearch"
                   fetchDetails
                   textInputProps={{
                     value: from,
                     onChangeText: setFrom,
+                    onSubmitEditing: handleFromSubmit,
+                    returnKeyType: "search",
+                    onBlur: () => {
+                      if (!from.trim()) {
+                        setFrom("Victoria Island, Lagos");
+                      }
+                    },
                     placeholderTextColor: colors.textMuted,
                     accessibilityLabel: "Pickup location",
                   }}
@@ -263,10 +344,15 @@ export default function HomeScreen({ navigation }: Props) {
                     language: "en",
                     components: "country:ng",
                   }}
+                  minLength={2}
+                  debounce={200}
+                  nearbyPlacesAPI="GooglePlacesSearch"
                   fetchDetails
                   textInputProps={{
                     value: to,
                     onChangeText: setTo,
+                    onSubmitEditing: handleToSubmit,
+                    returnKeyType: "search",
                     placeholderTextColor: colors.textMuted,
                     accessibilityLabel: "Drop-off location",
                   }}
@@ -313,6 +399,7 @@ export default function HomeScreen({ navigation }: Props) {
               pulseAnim={pulseAnim}
               from={from}
               activeDestination={activeDestination}
+              fromCoordinate={fromCoordinate}
             />
 
             {/* Eco banner */}
@@ -463,12 +550,19 @@ const createStyles = (colors: any) =>
       shadowRadius: 8,
       elevation: 2,
       zIndex: 10,
+      overflow: "visible",
     },
     inputRow: {
       flexDirection: "row",
       alignItems: "center",
       paddingVertical: Spacing.xs,
       zIndex: 10,
+    },
+    inputRowFrom: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: Spacing.xs,
+      zIndex: 20,
     },
     inputDot: {
       width: 10,
@@ -493,9 +587,9 @@ const createStyles = (colors: any) =>
       top: 44,
       left: 0,
       right: 0,
-      zIndex: 99,
+      zIndex: 999,
       borderRadius: Radius.md,
-      elevation: 5,
+      elevation: 10,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.15,
